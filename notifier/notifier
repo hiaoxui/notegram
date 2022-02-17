@@ -1,0 +1,26 @@
+from argparse import ArgumentParser
+import logging
+
+from notifier.bot import TelegramBot
+
+logger = logging.getLogger('notifier')
+
+
+def run():
+    parser = ArgumentParser()
+    parser.add_argument('command', type=str, choices=['bot'])
+    args = parser.parse_args()
+    if args.command == 'bot':
+        max_tries = 4
+        while max_tries > 0:
+            try:
+                logger.warning('start to run bot.')
+                bot = TelegramBot()
+                bot.run()
+            except Exception as e:
+                logger.warning(e)
+            max_tries -= 1
+
+
+if __name__ == '__main__':
+    run()
