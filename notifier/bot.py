@@ -40,7 +40,7 @@ class TelegramBot:
         chat_id = update.effective_chat.id
         past = 3600
         if len(args) == 1:
-            past = args[1]
+            past = int(args[1])
         domains = self.db.cid2domain(chat_id)
         for domain in domains:
             self.log(domain, chat_id, 10, past, True)
