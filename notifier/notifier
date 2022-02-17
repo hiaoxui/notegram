@@ -11,15 +11,9 @@ def run():
     parser.add_argument('command', type=str, choices=['bot'])
     args = parser.parse_args()
     if args.command == 'bot':
-        max_tries = 4
-        while max_tries > 0:
-            try:
-                logger.warning('start to run bot.')
-                bot = TelegramBot()
-                bot.run()
-            except Exception as e:
-                logger.warning(e)
-            max_tries -= 1
+            logger.warning('start to run bot.')
+            bot = TelegramBot()
+            bot.run()
 
 
 if __name__ == '__main__':
