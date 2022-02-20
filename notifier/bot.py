@@ -64,10 +64,10 @@ class TelegramBot:
             self.last_send = time.time()
 
     def cron(self, domain, cid, level):
-        freq = self.cfg['telegram'].get('freq', 30)
+        freq = int(self.cfg['telegram'].get('freq', 10))
         while True:
             try:
-                self.log(domain, cid, level, freq*2, False)
+                self.log(domain, cid, level, max(10, freq*2), False)
                 time.sleep(freq)
             except Exception as e:
                 logger.error(e)
