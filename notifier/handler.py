@@ -1,8 +1,10 @@
-from logging import handlers, Handler, LogRecord, warning
+from logging import handlers, Handler, LogRecord, warning, getLogger
 from threading import Thread
 
 from notifier.db import Storage
 from notifier.util import load_config
+
+logger = getLogger('notifier')
 
 
 class NotifierHandler(Handler):
@@ -19,8 +21,8 @@ class NotifierHandler(Handler):
         def post_message():
             try:
                 self.db.post(record.levelno, record.name, record.getMessage())
-            except:
-                pass
+            except Exception as e:
+                logger.error('Exception for handler. msg=' + str(e))
 
         if self.db is not None:
             t = Thread(target=post_message, args=())

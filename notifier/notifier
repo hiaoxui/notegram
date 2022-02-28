@@ -11,9 +11,9 @@ def run():
     parser.add_argument('command', type=str, choices=['bot'])
     args = parser.parse_args()
     if args.command == 'bot':
-            logger.warning('start to run bot.')
-            bot = TelegramBot()
-            bot.run()
+        logger.warning('start to run bot.')
+        bot = TelegramBot()
+        bot.run()
 
 
 if __name__ == '__main__':
