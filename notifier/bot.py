@@ -29,7 +29,7 @@ class TelegramBot:
         pull_handler = CommandHandler('pull', self.pull)
         self.updater.dispatcher.add_handler(pull_handler)
         for level_name, level in zip(['debug', 'info', 'warning', 'error', 'critical'], range(10, 60, 10)):
-            handler = CommandHandler(level_name, partial(self.pull, level=level))
+            handler = CommandHandler(level_name, partial(self.pull, level_range=[level, level]))
             self.updater.dispatcher.add_handler(handler)
 
     def link(self, update: Update, context: CallbackContext):
@@ -41,14 +41,16 @@ class TelegramBot:
         self.db.link_chat(args[0], chat_id)
         context.bot.send_message(chat_id=chat_id, text='Received')
 
-    def pull(self, update: Update, context: CallbackContext, level=None):
+    def pull(self, update: Update, context: CallbackContext, level_range=None):
+        if level_range is None:
+            level_range = [10, 100]
         logger.warning('Pulling')
         args = context.args
         chat_id = update.effective_chat.id
         past = int(args[0]) if len(args) >= 1 else 3600
         domains = self.db.cid2domain(chat_id)
         for domain in domains:
-            self.log(domain, chat_id, level, past, True)
+            self.log(domain, chat_id, level_range, past, True)
         logger.warning('Pulling done')
 
     def run(self):
@@ -58,8 +60,8 @@ class TelegramBot:
             t.start()
         self.updater.start_polling()
 
-    def log(self, domain, cid, level, past, repeat=False):
-        messages = self.db.pull(domain, level, past)
+    def log(self, domain, cid, level_range, past, repeat=False):
+        messages = self.db.pull(domain, level_range, past)
         for mid, content in messages:
             if self.message_count[(cid, mid)] > 0 and not repeat:
                 continue
@@ -72,7 +74,7 @@ class TelegramBot:
         freq = int(self.cfg['telegram'].get('freq', 10))
         while True:
             try:
-                self.log(domain, cid, level, max(10, freq*2), False)
+                self.log(domain, cid, [level, 100], max(10, freq*3), False)
                 time.sleep(freq)
             except Exception as e:
                 logger.error(e)
