@@ -28,7 +28,7 @@ class TelegramBot:
     def add_pull_handlers(self):
         pull_handler = CommandHandler('pull', self.pull)
         self.updater.dispatcher.add_handler(pull_handler)
-        for level_name, level in zip(['debug', 'info', 'warning', 'error', 'critical'], range(10, 60)):
+        for level_name, level in zip(['debug', 'info', 'warning', 'error', 'critical'], range(10, 60, 10)):
             handler = CommandHandler(level_name, partial(self.pull, level=level))
             self.updater.dispatcher.add_handler(handler)
 
