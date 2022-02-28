@@ -2,6 +2,7 @@ from collections import defaultdict
 import time
 import logging
 from threading import Thread
+from functools import partial
 
 from telegram.ext import Updater, CallbackContext, CommandHandler
 from telegram import Update, Bot
@@ -20,10 +21,16 @@ class TelegramBot:
         self.updater = Updater(token=self.cfg['telegram']['token'], use_context=True)
         link_handler = CommandHandler('link', self.link)
         self.updater.dispatcher.add_handler(link_handler)
-        pull_handler = CommandHandler('pull', self.pull)
-        self.updater.dispatcher.add_handler(pull_handler)
+        self.add_pull_handlers()
         self.message_count = defaultdict(int)
         self.last_send = 0
+
+    def add_pull_handlers(self):
+        pull_handler = CommandHandler('pull', self.pull)
+        self.updater.dispatcher.add_handler(pull_handler)
+        for level_name, level in zip(['debug', 'info', 'warning', 'error', 'critical'], range(10, 60)):
+            handler = CommandHandler(level_name, partial(self.pull, level=level))
+            self.updater.dispatcher.add_handler(handler)
 
     def link(self, update: Update, context: CallbackContext):
         args = context.args
@@ -34,16 +41,14 @@ class TelegramBot:
         self.db.link_chat(args[0], chat_id)
         context.bot.send_message(chat_id=chat_id, text='Received')
 
-    def pull(self, update: Update, context: CallbackContext):
+    def pull(self, update: Update, context: CallbackContext, level=None):
         logger.warning('Pulling')
         args = context.args
         chat_id = update.effective_chat.id
-        past = 3600
-        if len(args) == 1:
-            past = int(args[0])
+        past = int(args[0]) if len(args) >= 1 else 3600
         domains = self.db.cid2domain(chat_id)
         for domain in domains:
-            self.log(domain, chat_id, 10, past, True)
+            self.log(domain, chat_id, level, past, True)
         logger.warning('Pulling done')
 
     def run(self):

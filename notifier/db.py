@@ -49,10 +49,16 @@ class Storage:
         cur = conn.cursor()
         if isinstance(domain, str):
             domain = self.domain_id(domain, cur)
-        cur.execute(
-            'SELECT `id`, `content` FROM `message` WHERE domain=%s AND level >= %s AND ts >= %s',
-            (domain, level, int(time.time() - past))
-        )
+        if level is None:
+            cur.execute(
+                'SELECT `id`, `content` FROM `message` WHERE domain=%s AND level >= 10 AND ts >= %s',
+                (domain, int(time.time() - past))
+            )
+        else:
+            cur.execute(
+                'SELECT `id`, `content` FROM `message` WHERE domain=%s AND level=%s AND ts >= %s',
+                (domain, level, int(time.time() - past))
+            )
         rst = cur.fetchall()
         cur.close()
         conn.close()
