@@ -4,8 +4,11 @@ import logging
 from threading import Thread
 from functools import partial
 
-from telegram.ext import Updater, CallbackContext, CommandHandler
-from telegram import Update, Bot
+try:
+    from telegram.ext import Updater, CallbackContext, CommandHandler
+    from telegram import Update, Bot
+except:
+    pass
 
 from notifier.util import load_config
 from notifier.db import Storage
