@@ -1,13 +1,8 @@
 import pymysql
-import time
-
-from notifier.util import load_config
 
 
 class Storage:
-    def __init__(
-            self, host, port, user, password, database
-    ):
+    def __init__(self, host, port, user, password, database):
         self.conn_args = {'host': host, 'user': user, 'password': password, 'database': database, 'port': port}
 
     @staticmethod
@@ -27,22 +22,25 @@ class Storage:
         if isinstance(domain, str):
             domain = self.domain_id(domain, cur)
         cur.execute(
-            'INSERT INTO `message` (`level`, `ts`, `content`, `domain`) VALUES (%s, %s, %s, %s)',
-            (level, int(time.time()), message, domain)
+            'INSERT INTO `message` (`level`, `content`, `domain`) VALUES (%s, %s, %s)', (level, message, domain)
         )
         cur.close()
         conn.commit()
         conn.close()
 
     def link_chat(self, domain, chat_id):
-        conn = pymysql.connect(**self.conn_args)
-        cur = conn.cursor()
-        if isinstance(domain, str):
-            domain = self.domain_id(domain, cur)
-        cur.execute('INSERT INTO `tg` (`domain`, `cid`) VALUES (%s, %s)', (domain, chat_id))
-        cur.close()
-        conn.commit()
-        conn.close()
+        with pymysql.connect(**self.conn_args) as conn:
+            with conn.cursor() as cur:
+                if isinstance(domain, str):
+                    domain = self.domain_id(domain, cur)
+                cur.execute('SELECT * FROM `tg` WHERE `domain`=%s AND `cid`=%s', (domain, chat_id))
+                fetched = cur.fetchall()
+                is_new = False
+                if len(fetched) == 0:
+                    is_new = True
+                    cur.execute('INSERT INTO `tg` (`domain`, `cid`) VALUES (%s, %s)', (domain, chat_id))
+            conn.commit()
+        return domain, chat_id, is_new
 
     def pull(self, domain, level_range, past):
         conn = pymysql.connect(**self.conn_args)
@@ -51,8 +49,9 @@ class Storage:
             domain = self.domain_id(domain, cur)
         low, high = level_range
         cur.execute(
-            'SELECT `id`, `content` FROM `message` WHERE domain=%s AND level >= %s AND level <= %s AND ts >= %s',
-            (domain, low, high, int(time.time() - past))
+            'SELECT `id`, `content` FROM `message` '
+            'WHERE domain=%s AND level >= %s AND level <= %s AND ts >= UNIX_TIMESTAMP() - %s',
+            (domain, low, high, past)
         )
         rst = cur.fetchall()
         cur.close()

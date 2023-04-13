@@ -1,6 +1,16 @@
 import os
 from copy import deepcopy
 import json
+import asyncio
+
+
+def async_partial(f, **kwargs):
+    async def f2(*args2, **kwargs2):
+        result = f(*args2, **kwargs, **kwargs2)
+        if asyncio.iscoroutinefunction(f):
+            result = await result
+        return result
+    return f2
 
 
 CONFIG_PATHS = [
