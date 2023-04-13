@@ -39,7 +39,7 @@ class TelegramBot:
         args = context.args
         chat_id = update.effective_chat.id
         if len(args) < 2 or args[1] != self.cfg['telegram']['secret']:
-            context.bot.send_message(chat_id=chat_id, text='Error')
+            context.bot.send_message(chat_id=chat_id, text='Error', parse_mode='Markdown')
             return
         self.db.link_chat(args[0], chat_id)
         context.bot.send_message(chat_id=chat_id, text='Received')
