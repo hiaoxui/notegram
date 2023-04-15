@@ -1,8 +1,5 @@
 from collections import defaultdict
 import time
-import logging
-from threading import Thread
-import asyncio
 
 try:
     from telegram.ext import CallbackContext, CommandHandler, ApplicationBuilder, ContextTypes
@@ -10,10 +7,8 @@ try:
 except ImportError:
     pass
 
-from notifier.util import load_config, async_partial
+from notifier.util import load_config, async_partial, logger
 from notifier.db import Storage
-
-logger = logging.getLogger('notifier')
 
 
 class TelegramBot:

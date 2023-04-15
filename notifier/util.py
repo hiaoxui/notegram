@@ -1,4 +1,5 @@
 import os
+import logging
 from copy import deepcopy
 import json
 import asyncio
@@ -28,3 +29,19 @@ def load_config(path=None):
         if os.path.exists(p):
             return json.load(open(p))
 
+
+def get_logger():
+    _logger = logging.getLogger('notifier')
+    fmt = logging.Formatter('%(asctime)s - %(message)s')
+    stm_hdl = logging.StreamHandler()
+    stm_hdl.setFormatter(fmt)
+    _logger.addHandler(stm_hdl)
+    path = os.path.join(os.environ.get('HOME'), '.var', 'log', 'notifier.log')
+    os.makedirs(os.path.dirname(path))
+    f_hdl = logging.FileHandler(path)
+    f_hdl.setFormatter(fmt)
+    _logger.addHandler(f_hdl)
+    return _logger
+
+
+logger = get_logger()
