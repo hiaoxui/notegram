@@ -37,7 +37,7 @@ def get_logger():
     stm_hdl.setFormatter(fmt)
     _logger.addHandler(stm_hdl)
     path = os.path.join(os.environ.get('HOME'), '.var', 'log', 'notifier.log')
-    os.makedirs(os.path.dirname(path))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     f_hdl = logging.FileHandler(path)
     f_hdl.setFormatter(fmt)
     _logger.addHandler(f_hdl)
