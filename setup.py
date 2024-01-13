@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='notifier',
-    version='',
+    version='1.0',
     packages=['notifier'],
     url='',
     license='',
