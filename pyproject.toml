@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "notifier"
+version = "1.0"
+description = "Telegram notifier"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "hiaoxui", email = "hiaoxui@gmail.com" },
+]
+dependencies = [
+    "python-telegram-bot>=20",
+    "PyMySQL>=1.0.0",
+]
+
+[project.scripts]
+notifier = "notifier.notifier:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/notifier"]
