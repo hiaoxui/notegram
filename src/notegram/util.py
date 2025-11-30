@@ -18,10 +18,10 @@ def async_partial(f, **kwargs):
 
 
 CONFIG_PATHS: List[Path] = [
-    Path('./notegram.toml').resolve(),
-    Path('~/.config/notegram.toml').expanduser(),
-    Path('~/walless.config.d/notegram.toml').expanduser(),
-    Path('/etc/notegram.toml'),
+    Path('./').resolve(),
+    Path('~/.config/').expanduser(),
+    Path('~/walless.config.d/').expanduser(),
+    Path('/etc/'),
 ]
 
 
@@ -30,9 +30,12 @@ def load_config(path=None) -> Dict: # type: ignore
     if path is not None:
         tries.insert(0, path)
     for p in tries:
-        if p.exists():
-            with p.open('r') as f:
-                return tomllib.loads(f.read())['notegram']
+        if not p.is_dir():
+            continue
+        for f in p.glob('*.toml'):
+            if 'notegram' in f.name:
+                with f.open('r') as fp:
+                    return tomllib.loads(fp.read())['notegram']
 
 
 def get_logger():
