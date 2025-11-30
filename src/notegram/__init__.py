@@ -1,2 +1,2 @@
 from .db import Storage
-from .handler import NotifierHandler
+from .handler import NotegramHandler

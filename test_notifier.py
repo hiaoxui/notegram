@@ -1,7 +1,7 @@
 import logging
-from notegram import NotifierHandler
+from notegram import NotegramHandler
 
-logger = logging.getLogger('notifier_test')
-logger.addHandler(NotifierHandler())
+logger = logging.getLogger('NoteGram Test')
+logger.addHandler(NotegramHandler())
 logger.addHandler(logging.StreamHandler())
 logger.warning('A test message is sent!')

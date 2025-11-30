@@ -4,10 +4,10 @@ from threading import Thread
 from notegram.db import Storage
 from notegram.util import load_config
 
-logger = getLogger('notifier')
+logger = getLogger('notegram')
 
 
-class NotifierHandler(Handler):
+class NotegramHandler(Handler):
     def __init__(self, cfg_path=None):
         super().__init__()
         config = load_config(cfg_path)
@@ -15,7 +15,7 @@ class NotifierHandler(Handler):
         if config is not None:
             self.db = Storage(**config['db'])
         else:
-            warning('DB config not found. Notifier disabled.')
+            warning('DB config not found. Notegram disabled.')
 
     def emit(self, record: LogRecord) -> None:
         def post_message():

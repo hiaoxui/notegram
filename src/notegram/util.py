@@ -32,16 +32,16 @@ def load_config(path=None) -> Dict: # type: ignore
     for p in tries:
         if p.exists():
             with p.open('r') as f:
-                return tomllib.loads(f.read())
+                return tomllib.loads(f.read())['notegram']
 
 
 def get_logger():
-    _logger = logging.getLogger('notifier')
+    _logger = logging.getLogger('notegram')
     fmt = logging.Formatter('%(asctime)s - %(message)s')
     stm_hdl = logging.StreamHandler()
     stm_hdl.setFormatter(fmt)
     _logger.addHandler(stm_hdl)
-    path = Path('~/.var/log/notifier.log').expanduser()
+    path = Path('~/.var/log/notegram.log').expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     f_hdl = logging.FileHandler(path)
     f_hdl.setFormatter(fmt)

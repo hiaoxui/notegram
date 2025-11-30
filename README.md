@@ -1,12 +1,7 @@
-# notifier
+# NoteGram
 Telegram notifier
 
-## Installation
-
-This project now uses `pyproject.toml` packaging. Install locally with:
-
-```bash
-pip install .
+# Installation
 ```
-
-After installation you can invoke the CLI via `notifier bot`.
+pip3 install --upgrade git+https://github.com/hiaoxui/notegram.git
+```
