@@ -27,7 +27,7 @@ DROP TABLE IF EXISTS tg;
 CREATE TABLE tg (
     id              SERIAL PRIMARY KEY,
     domain_id       INT,
-    cid             VARCHAR(100),
+    cid             INT,
     report_level    INT DEFAULT 30,
     base_level      INT,
 

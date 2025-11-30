@@ -9,7 +9,7 @@ class Storage:
         self.conn_args = {'host': host, 'user': user, 'password': password, 'dbname': database, 'port': port}
 
     @staticmethod
-    def domain_id(domain, cursor):
+    def domain_id(domain, cursor) -> int:
         cursor.execute('SELECT id FROM domain WHERE name = %s', (domain,))
         q_rst = cursor.fetchall()
         if len(q_rst) == 0:
@@ -29,17 +29,17 @@ class Storage:
                 )
             conn.commit()
 
-    def link_chat(self, domain, chat_id):
+    def link_chat(self, domain: str | int, chat_id: int) -> Tuple[int, int, bool]:
         with psycopg.connect(**self.conn_args) as conn:
             with conn.cursor() as cur:
                 if isinstance(domain, str):
-                    domain = self.domain_id(domain, cur)
-                cur.execute('SELECT 1 FROM tg WHERE domain = %s AND cid = %s', (domain, chat_id))
+                    domain = self.domain_id(domain=domain, cursor=cur)
+                cur.execute('SELECT 1 FROM tg WHERE domain = %s AND cid = %s', params=(domain, chat_id))
                 fetched = cur.fetchall()
                 is_new = False
                 if len(fetched) == 0:
                     is_new = True
-                    cur.execute('INSERT INTO tg (domain, cid) VALUES (%s, %s)', (domain, chat_id))
+                    cur.execute('INSERT INTO tg (domain, cid) VALUES (%s, %s)', params=(domain, chat_id))
             conn.commit()
         return domain, chat_id, is_new
 
