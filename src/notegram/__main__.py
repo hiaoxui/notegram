@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 import logging
 
-from notifier.bot import TelegramBot
+from notegram.bot import TelegramBot
 
 logger = logging.getLogger('notifier')
 
@@ -16,6 +16,8 @@ def run():
         logger.warning('start to run bot.')
         bot = TelegramBot()
         bot.run()
+    else:
+        logger.error(f'unknown command: {args.command}')
 
 
 if __name__ == '__main__':

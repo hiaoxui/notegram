@@ -1,0 +1,17 @@
+[Unit]
+Description=notegram bot
+Requires=network.target
+
+[Service]
+WorkingDirectory=/home/hiaoxui
+ExecStart=/home/hiaoxui/.local/share/anaconda3/envs/notegram/bin/python3 -m notegram bot
+User=hiaoxui
+
+Restart=on-failure
+RestartSec=60
+StartLimitInterval=3600
+StartLimitBurst=60
+
+[Install]
+WantedBy=multi-user.target
+

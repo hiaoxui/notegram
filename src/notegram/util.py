@@ -1,7 +1,10 @@
-import os
+from typing import List
 import logging
 from copy import deepcopy
-import json
+from pathlib import Path
+from typing import Dict
+import tomllib
+
 import asyncio
 
 
@@ -14,20 +17,22 @@ def async_partial(f, **kwargs):
     return f2
 
 
-CONFIG_PATHS = [
-    './notifier.json',
-    os.path.join(os.environ.get('HOME', '/home/hiaoxui'), '.config/notifier.json'),
-    '/etc/notifier.json'
+CONFIG_PATHS: List[Path] = [
+    Path('./notegram.toml').resolve(),
+    Path('~/.config/notegram.toml').expanduser(),
+    Path('~/walless.config.d/notegram.toml').expanduser(),
+    Path('/etc/notegram.toml'),
 ]
 
 
-def load_config(path=None):
+def load_config(path=None) -> Dict: # type: ignore
     tries = deepcopy(CONFIG_PATHS)
     if path is not None:
         tries.insert(0, path)
     for p in tries:
-        if os.path.exists(p):
-            return json.load(open(p))
+        if p.exists():
+            with p.open('r') as f:
+                return tomllib.loads(f.read())
 
 
 def get_logger():
@@ -36,8 +41,8 @@ def get_logger():
     stm_hdl = logging.StreamHandler()
     stm_hdl.setFormatter(fmt)
     _logger.addHandler(stm_hdl)
-    path = os.path.join(os.environ.get('HOME'), '.var', 'log', 'notifier.log')
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    path = Path('~/.var/log/notifier.log').expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
     f_hdl = logging.FileHandler(path)
     f_hdl.setFormatter(fmt)
     _logger.addHandler(f_hdl)

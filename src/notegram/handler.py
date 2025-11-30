@@ -1,8 +1,8 @@
 from logging import handlers, Handler, LogRecord, warning, getLogger
 from threading import Thread
 
-from notifier.db import Storage
-from notifier.util import load_config
+from notegram.db import Storage
+from notegram.util import load_config
 
 logger = getLogger('notifier')
 
@@ -11,7 +11,7 @@ class NotifierHandler(Handler):
     def __init__(self, cfg_path=None):
         super().__init__()
         config = load_config(cfg_path)
-        self.db = None
+        self.db: Storage = None # type: ignore
         if config is not None:
             self.db = Storage(**config['db'])
         else:
@@ -20,7 +20,7 @@ class NotifierHandler(Handler):
     def emit(self, record: LogRecord) -> None:
         def post_message():
             try:
-                self.db.post(record.levelno, record.name, record.getMessage())
+                self.db.post(level=record.levelno, domain=record.name, message=record.getMessage())
             except Exception as e:
                 logger.error('Exception for handler. msg=' + str(e))
 

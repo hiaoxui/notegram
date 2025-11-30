@@ -3,21 +3,19 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "notifier"
-version = "1.0"
+name = "notegram"
+version = "1.1"
 description = "Telegram notifier"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "hiaoxui", email = "hiaoxui@gmail.com" },
 ]
 dependencies = [
-    "python-telegram-bot>=20",
-    "PyMySQL>=1.0.0",
+    # only needed for centralized server
+    # "python-telegram-bot[job-queue]>=22.5",
+    "psycopg[binary]>=3.1",
 ]
 
-[project.scripts]
-notifier = "notifier.notifier:run"
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/notifier"]
+packages = ["src/notegram"]

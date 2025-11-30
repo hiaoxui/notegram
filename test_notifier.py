@@ -1,5 +1,5 @@
 import logging
-from notifier import NotifierHandler
+from notegram import NotifierHandler
 
 logger = logging.getLogger('notifier_test')
 logger.addHandler(NotifierHandler())
