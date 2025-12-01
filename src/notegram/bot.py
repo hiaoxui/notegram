@@ -74,6 +74,7 @@ class TelegramBot:
         freq = int(self.cfg['telegram'].get('freq', 10))
         for job_idx, (cid, domain, report_level, _) in enumerate(all_tg):
             assert self.application.job_queue is not None
+            logger.info(f'Scheduling cron for cid={cid}, domain={domain}, report_level={report_level}, freq={freq}')
             self.application.job_queue.run_repeating(callback=async_partial(self.cron, domain=domain, cid=cid, level=report_level, freq=freq), interval=freq, first=job_idx) # type: ignore
         self.application.run_polling()
 

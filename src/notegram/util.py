@@ -49,6 +49,7 @@ def get_logger():
     f_hdl = logging.FileHandler(path)
     f_hdl.setFormatter(fmt)
     _logger.addHandler(f_hdl)
+    _logger.setLevel(logging.INFO)
     return _logger
 
 
