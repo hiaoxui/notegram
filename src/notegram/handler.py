@@ -1,4 +1,4 @@
-from logging import handlers, Handler, LogRecord, warning, getLogger
+from logging import Handler, LogRecord, warning, getLogger
 import re
 from threading import Thread
 
@@ -21,7 +21,11 @@ class NotegramHandler(Handler):
     def emit(self, record: LogRecord) -> None:
         def post_message():
             msg = record.getMessage()
-            markdown = getattr(record, 'markdown', False)
+            if msg.startswith('MARKDOWN'):
+                msg = re.sub(r'^MARKDOWN\s*', '', msg)
+                markdown = True
+            else:
+                markdown = False
 
             try:
                 self.db.post(level=record.levelno, domain=record.name, message=msg, markdown=markdown)
