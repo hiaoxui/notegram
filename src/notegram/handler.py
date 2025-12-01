@@ -1,4 +1,5 @@
 from logging import handlers, Handler, LogRecord, warning, getLogger
+import re
 from threading import Thread
 
 from notegram.db import Storage
@@ -19,8 +20,11 @@ class NotegramHandler(Handler):
 
     def emit(self, record: LogRecord) -> None:
         def post_message():
+            msg = record.getMessage()
+            markdown = getattr(record, 'markdown', False)
+
             try:
-                self.db.post(level=record.levelno, domain=record.name, message=record.getMessage())
+                self.db.post(level=record.levelno, domain=record.name, message=msg, markdown=markdown)
             except Exception as e:
                 logger.error('Exception for handler. msg=' + str(e))
 

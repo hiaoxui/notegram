@@ -19,13 +19,14 @@ class Storage:
         domain_id = q_rst[0][0]
         return domain_id
 
-    def post(self, level: int, domain: str | int, message: str):
+    def post(self, level: int, domain: str | int, message: str, markdown: bool):
         with psycopg.connect(**self.conn_args) as conn:
             with conn.cursor() as cur:
                 if isinstance(domain, str):
                     domain = self.domain_id(domain=domain, cursor=cur)
                 cur.execute(
-                    query='INSERT INTO message (level, content, domain, ts) VALUES (%s, %s, %s, %s)', params=(level, message, domain, int(time.time()))
+                    query='INSERT INTO message (level, content, domain, ts, markdown) VALUES (%s, %s, %s, %s, %s)',
+                    params=(level, message, domain, int(time.time()), markdown)
                 )
             conn.commit()
 
@@ -51,7 +52,7 @@ class Storage:
                 low, high = level_range
                 ts = int(time.time() - past)
                 cur.execute(
-                    query='SELECT id, content FROM message WHERE domain = %s AND level >= %s AND level <= %s AND ts >= %s',
+                    query='SELECT id, content, markdown FROM message WHERE domain = %s AND level >= %s AND level <= %s AND ts >= %s',
                     params=(domain, low, high, ts)
                 )
                 rst = cur.fetchall()

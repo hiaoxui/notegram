@@ -13,6 +13,7 @@ CREATE TABLE message (
     ts          BIGINT DEFAULT extract(epoch from now())::BIGINT,
     content     TEXT,
     domain_id   INT,
+    markdown    BOOLEAN DEFAULT FALSE,
 
     CONSTRAINT message_domain_fk
         FOREIGN KEY (domain_id)
