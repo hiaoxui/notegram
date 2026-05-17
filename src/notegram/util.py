@@ -1,4 +1,5 @@
 from typing import List
+import os
 import logging
 from copy import deepcopy
 from pathlib import Path
@@ -27,6 +28,10 @@ CONFIG_PATHS: List[Path] = [
 
 def load_config(path=None) -> Dict: # type: ignore
     tries = deepcopy(CONFIG_PATHS)
+    if 'WALLESS_ROOT' in os.environ:
+        tries.insert(0, Path(os.environ['WALLESS_ROOT']) / 'walless.config.d')
+    if 'WALLESS_CONFIG' in os.environ:
+        tries.insert(0, Path(os.environ['WALLESS_CONFIG']))
     if path is not None:
         tries.insert(0, path)
     for p in tries:
