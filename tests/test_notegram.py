@@ -124,7 +124,7 @@ class ConfigTests(IsolatedTest):
         client = ClientConfig.load(local)
         self.assertTrue(server.token)
         self.assertEqual(server.token, client.token)
-        self.assertEqual(server.telegram_token, raw["telegram"]["token"])
+        self.assertEqual(server.telegram_token, raw.get("telegram", {}).get("token", ""))
 
     def test_example_file_is_not_loaded_from_repository_working_directory(self):
         self.config_file(

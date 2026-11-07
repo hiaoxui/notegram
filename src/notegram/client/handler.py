@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from uuid import uuid4
 
 from ..protocol import MAX_MESSAGE_BYTES
-from ..transport import post_json
+from ..transport import post_json, transport_error
 from .config import ClientConfig
 
 
@@ -118,6 +118,7 @@ class NotegramHandler(logging.Handler):
                 )
                 if result.get("id") != event["id"]:
                     raise ValueError("Invalid acknowledgement")
+                self.last_error = None
                 return True
             except HTTPError as exc:
                 self.last_error = f"HTTP {exc.code}"
@@ -129,9 +130,9 @@ class NotegramHandler(logging.Handler):
                 exc.close()
                 if not retry:
                     return False
-            except (OSError, URLError, ValueError, TypeError, AttributeError):
+            except (OSError, URLError, ValueError, TypeError, AttributeError) as exc:
                 # Exception strings can contain URLs or secrets; never log them.
-                self.last_error = "transport failure"
+                self.last_error = transport_error(exc)
             if attempt < self.config.retries and self._stop.wait(delay):
                 break
         return False

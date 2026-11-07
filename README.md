@@ -401,3 +401,47 @@ Telegram rate limits, command authorization, and persisted polling offsets.
 
 `test_notifier.py` is a manual smoke check that sends a real notification only when
 run explicitly. It is not run as part of the automated test suite.
+
+### Troubleshoot a remote client
+
+Copying the server TOML to a client does not set a remote endpoint. The client reads
+`[notegram].url`, not `[notegram.server].host`, and defaults to
+`http://127.0.0.1:8765` when no URL is set. For a remote server, add its HTTPS base URL:
+
+```toml
+[notegram]
+url = "https://logs.example.com"
+token = "your-shared-token"
+```
+
+`~/.config/notegram.toml` is supported. A TOML in the current directory overrides
+settings it also contains; environment variables take precedence over both.
+You can explicitly select a config or override the endpoint for the smoke check:
+
+```sh
+python test_notifier.py --config ~/.config/notegram.toml
+NOTEGRAM_URL=https://logs.example.com python test_notifier.py
+```
+
+The smoke check prints the resolved endpoint, makes one attempt, and distinguishes
+HTTP errors, connection refusal, DNS failure, timeout, and TLS verification failure.
+Acceptance confirms storage on the server; Telegram delivery additionally requires
+linking the `notegram_test` logger to a chat.
+
+An HTTP 403 may come from a reverse proxy or access-control layer: Notegram's
+ingestion endpoint returns 401 for an invalid token and does not generate 403.
+Cloudflare error 1010 can reject Python urllib's default User-Agent. The transport
+sends `User-Agent: notegram/2.0` to identify the application, following
+[Cloudflare's guidance](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/).
+If an updated client is still blocked, inspect Cloudflare Security Events and the
+proxy configuration. The upstream must match the server's actual listening port.
+
+If the server only has the default loopback HTTP listener, use an SSH tunnel until
+you configure an HTTPS reverse proxy:
+
+```sh
+ssh -N -L 8765:127.0.0.1:8765 USER@SERVER
+```
+
+Keep that tunnel running and use `NOTEGRAM_URL=http://127.0.0.1:8765` in another
+terminal. The remote server's loopback listener is reached through SSH.

@@ -8,7 +8,7 @@ import threading
 import time
 from urllib.error import HTTPError
 
-from ..transport import post_json
+from ..transport import post_json, transport_error
 from .config import ServerConfig
 from .db import Storage
 from .menus import LinkMenus
@@ -30,10 +30,11 @@ HELP = (
 
 
 class TelegramError(Exception):
-    def __init__(self, code=0, retry_after=0, *, not_modified=False):
+    def __init__(self, code=0, retry_after=0, *, not_modified=False, reason=None):
         self.code = code
         self.retry_after = retry_after
         self.not_modified = not_modified
+        self.reason = reason
         # No Telegram response, request URL, or token in the exception message.
         super().__init__(f"Telegram request failed (code {code})")
 
@@ -92,8 +93,8 @@ class TelegramAPI:
             finally:
                 exc.close()
             raise TelegramError(code, retry_after, not_modified=not_modified) from None
-        except (OSError, ValueError, TypeError):
-            raise TelegramError() from None
+        except (OSError, ValueError, TypeError) as exc:
+            raise TelegramError(reason=transport_error(exc)) from None
         if not isinstance(result, dict) or not result.get("ok"):
             code = result.get("error_code", 0) if isinstance(result, dict) else 0
             retry = (
@@ -295,7 +296,11 @@ class TelegramBot:
                 failures = 0
             except TelegramError as exc:
                 failures += 1
-                logger.warning("Telegram polling deferred (code %s)", exc.code)
+                logger.warning(
+                    "Telegram polling deferred (code %s; %s)",
+                    exc.code,
+                    exc.reason or "API request rejected",
+                )
                 self._stop.wait(max(exc.retry_after, min(60, 2 ** min(failures, 6))))
             except Exception:
                 logger.error("Command worker failed; retrying")
