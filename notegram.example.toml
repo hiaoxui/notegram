@@ -15,9 +15,6 @@ flush_timeout = 5.0
 host = "127.0.0.1"
 port = 8765
 database = "notegram.sqlite3"
-# For TLS in the process instead of a reverse proxy:
-# tls_cert = "/etc/letsencrypt/live/logs.example.com/fullchain.pem"
-# tls_key = "/etc/letsencrypt/live/logs.example.com/privkey.pem"
 
 [notegram.telegram]
 token = "replace-with-your-botfather-token"

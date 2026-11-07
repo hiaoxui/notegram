@@ -1,6 +1,5 @@
 """Local-only tests: temporary SQLite/HTTP and fake Telegram; no live notifications."""
 
-import importlib.util
 import io
 import json
 import logging
@@ -13,7 +12,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -537,7 +536,7 @@ class ProcessTests(IsolatedTest):
                 "-c",
                 "import importlib.metadata as m, sys; import notegram; "
                 'assert all("extra ==" in r for r in (m.requires("notegram") or [])); '
-                'assert "psycopg" not in sys.modules; assert "telegram" not in sys.modules',
+                'assert "telegram" not in sys.modules',
             ],
             capture_output=True,
             timeout=5,
@@ -554,7 +553,7 @@ sys.path.insert(0, {str(ROOT / "src")!r})
 class BlockServer:
     def find_spec(self, fullname, path=None, target=None):
         if (fullname == "notegram.server" or fullname.startswith("notegram.server.")
-                or fullname.split(".")[0] in {{"sqlite3", "telegram", "psycopg"}}):
+                or fullname.split(".")[0] in {{"sqlite3", "telegram"}}):
             raise ImportError("Client attempted to import " + fullname)
 
 sys.meta_path.insert(0, BlockServer())
@@ -577,63 +576,6 @@ assert not any(m == "notegram.server" or m.startswith("notegram.server.") for m 
         )
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn(b"--api-only", result.stdout)
-
-
-@unittest.skipUnless(importlib.util.find_spec("psycopg"), "Optional migration extra not installed")
-class MigrationTests(IsolatedTest):
-    def source(self, column, messages):
-        source = MagicMock()
-        source.__enter__.return_value = source
-
-        def execute(statement, params=None):
-            query = statement if isinstance(statement, str) else statement.as_string()
-            if "information_schema" in query:
-                return [(column,)]
-            if "FROM public.tg" in query:
-                self.assertIn('t."' + column + '"', query)
-                return [("app", 123, 40)]
-            return []
-
-        source.execute.side_effect = execute
-        cursor = source.cursor.return_value.__enter__.return_value
-        cursor.__iter__.side_effect = lambda: iter(messages)
-        return source
-
-    def test_import_both_legacy_column_variants_without_replaying_history(self):
-        from notegram.server.migrate import import_postgres
-
-        cfg = self.config_file(
-            self.root / "legacy.toml",
-            '[notegram.db]\nhost="localhost"\nport=5432\ndatabase="legacy"\n'
-            'user="test"\npassword="not-a-real-password"\n',
-        )
-        for column in ["domain", "domain_id"]:
-            with self.subTest(column=column):
-                destination = Storage(self.root / (column + ".sqlite3"))
-                source = self.source(column, [(1, "app", 30, 1000, "old message", False)])
-                with patch("psycopg.connect", return_value=source) as connect:
-                    counts = import_postgres(cfg, destination)
-                    self.assertEqual(counts, {"events": 1, "subscriptions": 1})
-                    self.assertEqual(import_postgres(cfg, destination)["events"], 0)
-                self.assertEqual(connect.call_args.kwargs["dbname"], "legacy")
-                source.execute.assert_any_call(
-                    "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
-                )
-                self.assertEqual(destination.subscriptions(123), [{"domain": "app", "level": 40}])
-                self.assertIsNone(destination.next_delivery())
-
-    def test_failed_import_rolls_back_every_event(self):
-        from notegram.server.migrate import import_postgres
-
-        cfg = self.config_file(self.root / "legacy.toml", '[notegram.db]\nhost="localhost"\n')
-        destination = Storage(self.root / "rollback.sqlite3")
-        source = self.source(
-            "domain", [(1, "app", 30, 1000, "good", False), (2, "app", 30, 1000, None, False)]
-        )
-        with patch("psycopg.connect", return_value=source), self.assertRaises(Exception):
-            import_postgres(cfg, destination)
-        with destination.connect() as conn:
-            self.assertEqual(conn.execute("SELECT count(*) FROM events").fetchone()[0], 0)
 
 
 if __name__ == "__main__":

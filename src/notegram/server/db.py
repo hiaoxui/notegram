@@ -61,32 +61,30 @@ class Storage:
         finally:
             conn.close()
 
-    def post(self, event: dict, *, schedule=True, connection=None) -> bool:
-        if connection is None:
-            with self.connect() as conn:
-                return self.post(event, schedule=schedule, connection=conn)
-        conn = connection
-        # INSERT serializes writers before checking for existing content.
-        cursor = conn.execute(
-            """INSERT INTO events
-            (id,domain,level,timestamp,received,message,format) VALUES (?,?,?,?,?,?,?)
-            ON CONFLICT(id) DO NOTHING""",
-            (
-                event["id"],
-                event["domain"],
-                event["level"],
-                event["timestamp"],
-                time.time(),
-                event["message"],
-                event["format"],
-            ),
-        )
-        if not cursor.rowcount:
-            old = dict(conn.execute("SELECT * FROM events WHERE id=?", (event["id"],)).fetchone())
-            if any(old[key] != event[key] for key in event):
-                raise EventConflict("Event ID already exists with different contents")
-            return False
-        if schedule:
+    def post(self, event: dict) -> bool:
+        with self.connect() as conn:
+            # INSERT serializes writers before checking for existing content.
+            cursor = conn.execute(
+                """INSERT INTO events
+                (id,domain,level,timestamp,received,message,format) VALUES (?,?,?,?,?,?,?)
+                ON CONFLICT(id) DO NOTHING""",
+                (
+                    event["id"],
+                    event["domain"],
+                    event["level"],
+                    event["timestamp"],
+                    time.time(),
+                    event["message"],
+                    event["format"],
+                ),
+            )
+            if not cursor.rowcount:
+                old = dict(
+                    conn.execute("SELECT * FROM events WHERE id=?", (event["id"],)).fetchone()
+                )
+                if any(old[key] != event[key] for key in event):
+                    raise EventConflict("Event ID already exists with different contents")
+                return False
             conn.execute(
                 """INSERT INTO deliveries(event_id,domain,chat_id)
                 SELECT ?,domain,chat_id FROM subscriptions WHERE domain=? AND level<=?""",
@@ -94,15 +92,13 @@ class Storage:
             )
         return True
 
-    def link_chat(self, domain: str, chat_id: int, level=30, *, connection=None):
-        if connection is None:
-            with self.connect() as conn:
-                return self.link_chat(domain, chat_id, level, connection=conn)
-        connection.execute(
-            """INSERT INTO subscriptions(domain,chat_id,level) VALUES (?,?,?)
-            ON CONFLICT(domain,chat_id) DO UPDATE SET level=excluded.level""",
-            (domain, chat_id, level),
-        )
+    def link_chat(self, domain: str, chat_id: int, level=30):
+        with self.connect() as conn:
+            conn.execute(
+                """INSERT INTO subscriptions(domain,chat_id,level) VALUES (?,?,?)
+                ON CONFLICT(domain,chat_id) DO UPDATE SET level=excluded.level""",
+                (domain, chat_id, level),
+            )
 
     def unlink_chat(self, domain, chat_id):
         with self.connect() as conn:

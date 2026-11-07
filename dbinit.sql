@@ -1,9 +1,0 @@
--- Notegram 2 initializes its SQLite schema automatically on server startup.
--- The schema is maintained in src/notegram/server/db.py.
---
--- For existing PostgreSQL installations, preserve the old database and run:
---   pip install 'notegram[migration]'
---   notegram import-postgres --config /path/to/notegram.toml
---
--- Import is read-only against PostgreSQL and does not send historical events.
--- Do not run the destructive DROP TABLE statements from Notegram 1.

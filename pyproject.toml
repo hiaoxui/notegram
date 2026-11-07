@@ -11,9 +11,6 @@ requires-python = ">=3.11"
 authors = [{ name = "hiaoxui", email = "hiaoxui@gmail.com" }]
 dependencies = []
 
-[project.optional-dependencies]
-migration = ["psycopg[binary]>=3.1"]
-
 [project.scripts]
 notegram = "notegram.__main__:run"
 notegram-server = "notegram.server.cli:run"

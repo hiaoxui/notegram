@@ -15,7 +15,7 @@ def run(argv=None):
         "command",
         nargs="?",
         default="server",
-        choices=["server", "bot", "import-postgres", "retry-failed", "prune"],
+        choices=["server", "bot", "retry-failed", "prune"],
     )
     parser.add_argument("--config", help="TOML file or configuration directory")
     parser.add_argument(
@@ -37,14 +37,7 @@ def run(argv=None):
             from .db import Storage
 
             storage = Storage(config.database)
-            if args.command == "import-postgres":
-                from .migrate import import_postgres
-
-                result = import_postgres(args.config, storage)
-                print(
-                    f"Imported {result['events']} new events and {result['subscriptions']} subscriptions."
-                )
-            elif args.command == "retry-failed":
+            if args.command == "retry-failed":
                 print(f"Requeued {storage.retry_failed()} failed deliveries.")
             elif args.command == "prune":
                 if args.days < 1:
@@ -53,7 +46,7 @@ def run(argv=None):
     except ConfigError as exc:
         parser.error(str(exc))
     except Exception:
-        # Driver and HTTP exception strings may contain credentials.
+        # Exception strings may contain credentials.
         parser.exit(
             1,
             "Notegram could not complete the operation; check configuration and service availability.\n",

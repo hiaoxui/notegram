@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import os
 import socket
 import ssl
 from contextlib import redirect_stderr, redirect_stdout
@@ -22,6 +23,78 @@ class SmokeDiagnosticsTests(IsolatedTest):
             self.root / "notegram.toml",
             '[notegram]\nurl="https://server.example"\ntoken="private-test-token"\n',
         )
+
+    def test_prints_loaded_files_environment_and_effective_values_in_order(self):
+        home = self.config_file(
+            self.root / ".config/notegram.toml",
+            '[notegram]\nurl="https://home.example"\ntoken="home-secret"\n'
+            '[notegram.telegram]\ntoken="bot-secret"\n',
+        )
+        selected = self.config_file(self.root / "selected.toml", "[notegram.client]\ntimeout=8\n")
+        out = io.StringIO()
+
+        def accept(url, event, **kwargs):
+            self.assertEqual(url, "https://argument.example/v1/events")
+            self.assertEqual(kwargs["token"], "environment-secret")
+            return {"id": event["id"]}
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "NOTEGRAM_URL": "https://environment.example",
+                    "NOTEGRAM_TOKEN": "environment-secret",
+                },
+            ),
+            patch("notegram.client.handler.post_json", side_effect=accept),
+            redirect_stdout(out),
+            redirect_stderr(io.StringIO()),
+        ):
+            smoke.main(["--config", str(selected), "--url", "https://argument.example"])
+        printed = out.getvalue()
+        markers = [
+            f"file: {home}",
+            f"file: {self.config}",
+            f"file: {selected}",
+            "environment: NOTEGRAM_URL",
+            "environment: NOTEGRAM_TOKEN",
+            "argument: url",
+            "Effective client configuration:",
+        ]
+        positions = [printed.index(marker) for marker in markers]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn('"timeout": 8.0', printed)
+        self.assertIn('"retries": 0', printed)
+        self.assertIn("[redacted]", printed)
+        for secret in ["home-secret", "bot-secret", "environment-secret", "private-test-token"]:
+            self.assertNotIn(secret, printed)
+
+    def test_environment_selected_file_is_reported_and_explicit_file_takes_precedence(self):
+        from notegram.client import ClientConfig
+
+        selected = self.config_file(self.root / "selected.toml", "[notegram.client]\ntimeout=9\n")
+        with patch.dict(os.environ, {"NOTEGRAM_CONFIG": str(selected)}):
+            config = ClientConfig.load()
+            self.assertEqual(config.timeout, 9)
+            self.assertTrue(any(s.name == "NOTEGRAM_CONFIG" for s in config.sources))
+            explicit = ClientConfig.load(self.config)
+            self.assertEqual(explicit.timeout, 5)
+            self.assertFalse(any(s.name == "NOTEGRAM_CONFIG" for s in explicit.sources))
+
+    def test_nested_credentials_are_redacted_without_mutating_input(self):
+        from notegram.config import redact_config
+
+        original = {
+            "token": "auth-secret",
+            "client": {"timeout": 5},
+            "other": [{"password": "password-secret", "api_key": "key-secret"}],
+        }
+        masked = redact_config(original)
+        self.assertNotIn("auth-secret", str(masked))
+        self.assertNotIn("password-secret", str(masked))
+        self.assertNotIn("key-secret", str(masked))
+        self.assertEqual(masked["client"]["timeout"], 5)
+        self.assertEqual(original["token"], "auth-secret")
 
     def test_specific_transport_failures_are_reported_without_secrets(self):
         cases = [

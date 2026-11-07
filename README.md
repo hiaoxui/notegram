@@ -4,17 +4,17 @@ Python logging → HTTPS ingestion → durable SQLite storage → Telegram.
 
 Notegram 2 keeps the Python logging interface and moves database access entirely
 onto the server. The client and server use Python 3.11+ and have **no runtime
-third-party dependencies**. PostgreSQL is needed only to import a version 1 database.
+third-party dependencies**.
 
 The implementation is split into two subpackages in one distribution:
 
 - `notegram.client`: logging handler and client configuration. Importing it never
-  loads server code, SQLite, PostgreSQL, or Telegram libraries.
-- `notegram.server`: ingestion API, database, Telegram bot, CLI, and migration.
+  loads server code, SQLite, or Telegram libraries.
+- `notegram.server`: ingestion API, database, Telegram bot, and CLI.
 
 `pip install notegram` installs no runtime dependencies. Neither subpackage needs
 `python-telegram-bot`; the server talks to Telegram over its HTTP API using the
-standard library. Only the optional PostgreSQL migration extra adds a dependency.
+standard library.
 Configuration discovery, HTTP transport, and protocol limits are shared modules.
 
 ## Install
@@ -131,7 +131,7 @@ Configuration tables merge in this order, from lowest to highest priority:
 
 Files within a directory merge in alphabetical order. Unrelated TOML files and
 `*.example.toml` / `*.sample.toml` templates are ignored during discovery;
-configuration belongs under `[notegram]`. Relative database and certificate
+configuration belongs under `[notegram]`. Relative database
 paths resolve against the process working directory. An explicitly selected missing
 path is an error. See [notegram.example.toml](notegram.example.toml) for all settings.
 
@@ -143,8 +143,6 @@ path is an error. See [notegram.example.toml](notegram.example.toml) for all set
 | `NOTEGRAM_HOST` | `notegram.server.host` |
 | `NOTEGRAM_PORT` | `notegram.server.port` |
 | `NOTEGRAM_DATABASE` | `notegram.server.database` |
-| `NOTEGRAM_TLS_CERT` | `notegram.server.tls_cert` |
-| `NOTEGRAM_TLS_KEY` | `notegram.server.tls_key` |
 | `NOTEGRAM_TELEGRAM_TOKEN` | `notegram.telegram.token` |
 
 There is **one Notegram authentication token**, shared by clients and `/link`.
@@ -212,10 +210,9 @@ logs.example.com {
 }
 ```
 
-The proxy should terminate TLS and enforce connection/rate limits; the standard
-library listener is intended to sit behind it. Alternatively, configure both
-`notegram.server.tls_cert` and `tls_key` and an appropriate listening host for TLS
-in the Python process. Do not expose the default plaintext listener publicly.
+The reverse proxy terminates HTTPS and enforces connection/rate limits. Notegram
+serves HTTP on its configured internal host and port; certificate management
+belongs to the proxy. Do not expose the plaintext listener publicly.
 
 [python-notegram.service](python-notegram.service) is a systemd template for this
 checkout. Adjust the user, interpreter, working directory, config, and database
@@ -326,37 +323,6 @@ Pruning removes old events only if they have no pending or failed deliveries.
 Back up the SQLite database with SQLite's backup API or while the service is stopped;
 copying only the main file during WAL writes can miss committed events.
 
-## Upgrade from Notegram 1
-
-1. Stop the old bot. Preserve PostgreSQL and its configuration.
-2. Install version 2 and optionally `pip install 'notegram[migration]'`.
-3. Keep the existing `notegram.toml` for import. Its `[notegram.db]` table is used
-   only by the explicit import command. Version 2 does not write to PostgreSQL.
-4. Select a server SQLite database under `[notegram.server]`, then run:
-
-   ```sh
-   notegram import-postgres --config /path/to/notegram.toml
-   ```
-
-   Import uses a read-only PostgreSQL snapshot and one SQLite transaction. Both
-   legacy `domain` and `domain_id` foreign-key column variants are supported.
-   Events use deterministic IDs, so repeating an import does not duplicate history.
-   Subscriptions are copied; historical messages are not automatically delivered.
-   A repeat import reapplies legacy subscription thresholds.
-5. Configure `[notegram].token` or `NOTEGRAM_TOKEN`. When neither is present,
-   legacy `[notegram.telegram].secret` is accepted as the single shared token.
-6. Start the new server. Upgrade clients and give them its URL and shared token.
-   Existing `NotegramHandler()` calls continue to work. Without a URL, upgraded
-   clients default to `http://127.0.0.1:8765`; remote clients must set their server URL.
-7. Once migration is verified, remove database credentials and the Telegram bot
-   credential from client machines. Keep the bot credential only on the server.
-
-This is a major version: the Python logger interface is preserved, but the old
-wire/storage protocol is replaced. Unupgraded clients still write PostgreSQL;
-coordinate their upgrade and a final import before retiring that database.
-`Storage` is now a server-internal SQLite class, not a public client interface.
-The destructive version 1 `dbinit.sql` is no longer used.
-
 ## Ingestion API
 
 `POST /v1/events` with `Authorization: Bearer TOKEN` and JSON:
@@ -423,7 +389,11 @@ python test_notifier.py --config ~/.config/notegram.toml
 NOTEGRAM_URL=https://logs.example.com python test_notifier.py
 ```
 
-The smoke check prints the resolved endpoint, makes one attempt, and distinguishes
+The smoke check prints each loaded configuration file with its absolute path,
+each applied environment variable, explicit arguments, and the final client
+settings including defaults. Sources are listed in application order so overrides
+are visible. Tokens, passwords, and other credentials are redacted. It then prints
+the resolved endpoint, makes one attempt, and distinguishes
 HTTP errors, connection refusal, DNS failure, timeout, and TLS verification failure.
 Acceptance confirms storage on the server; Telegram delivery additionally requires
 linking the `notegram_test` logger to a chat.

@@ -6,7 +6,6 @@ import logging
 import math
 import signal
 import socket
-import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -151,13 +150,6 @@ def run_server(config: ServerConfig, *, with_bot=True):
 
     storage = Storage(config.database)
     server = IngestionServer((config.host, config.port), storage, config.token)
-    if config.tls_cert:
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.minimum_version = ssl.TLSVersion.TLSv1_2
-        context.load_cert_chain(config.tls_cert, config.tls_key)
-        server.socket = context.wrap_socket(
-            server.socket, server_side=True, do_handshake_on_connect=False
-        )
     bot = (
         TelegramBot(config=config, storage=storage) if with_bot and config.telegram_token else None
     )

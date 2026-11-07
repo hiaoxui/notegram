@@ -1,9 +1,26 @@
 """Manual smoke check. Sends a real notification only when run explicitly."""
 
 import argparse
+import json
 import logging
+from dataclasses import fields
 
 from notegram import NotegramHandler
+from notegram.config import redact_config
+
+
+def print_config(config):
+    print("Configuration sources (in load order; later settings override earlier ones):")
+    for source in config.sources:
+        print(f"  {source.kind}: {source.name}")
+        print("    " + json.dumps(source.values, sort_keys=True, default=str))
+    effective = {
+        field.name: getattr(config, field.name)
+        for field in fields(config)
+        if field.name != "sources"
+    }
+    print("Effective client configuration:")
+    print(json.dumps(redact_config(effective), indent=2, sort_keys=True), flush=True)
 
 
 def failure_hint(error):
@@ -47,6 +64,7 @@ def main(argv=None):
     logger.addHandler(handler)
     logger.addHandler(console)
     try:
+        print_config(handler.config)
         if not handler.enabled:
             raise SystemExit("Notegram is disabled: set NOTEGRAM_TOKEN or [notegram].token.")
         endpoint = handler.config.url.replace(handler.config.token, "[redacted]")

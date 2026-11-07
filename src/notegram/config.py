@@ -4,11 +4,48 @@ import math
 import os
 import tomllib
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 
 
 class ConfigError(ValueError):
     pass
+
+
+def redact_config(value):
+    """Return a diagnostic copy with credentials masked, including nested settings."""
+    if isinstance(value, dict):
+        return {
+            key: "[redacted]"
+            if any(
+                part in key.lower()
+                for part in (
+                    "token",
+                    "secret",
+                    "password",
+                    "passwd",
+                    "key",
+                    "credential",
+                    "authorization",
+                )
+            )
+            else redact_config(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_config(item) for item in value]
+    return value
+
+
+@dataclass(frozen=True)
+class ConfigSource:
+    kind: str
+    name: str
+    values: dict
+
+
+def config_source(kind, name, values):
+    return ConfigSource(kind, str(name), redact_config(values))
 
 
 def _merge(target: dict, source: dict) -> None:
@@ -30,12 +67,23 @@ def _files(path: Path):
     return [path] if path.is_file() else []
 
 
-def load_config(path=None) -> dict:
+def load_config(path=None, *, sources: list[ConfigSource] | None = None) -> dict:
     """Merge system, user, working-directory, selected-file, then environment config.
 
     An explicit path must exist. Legacy WALLESS locations remain supported.
     """
     home = Path.home()
+    if sources is not None:
+        discovery = ["XDG_CONFIG_HOME", "WALLESS_ROOT", "WALLESS_CONFIG"]
+        if path is None:
+            discovery.append("NOTEGRAM_CONFIG")
+        for variable in discovery:
+            if os.environ.get(variable):
+                sources.append(
+                    config_source(
+                        "discovery environment", variable, {variable: os.environ[variable]}
+                    )
+                )
     locations = [
         Path("/etc/notegram.toml"),
         Path("/etc/notegram"),
@@ -64,9 +112,11 @@ def load_config(path=None) -> dict:
                 if not isinstance(section, dict):
                     raise ConfigError(f"Expected a [notegram] table in {filename}")
                 _merge(result, section)
+                if sources is not None:
+                    sources.append(config_source("file", filename.resolve(), section))
             except (OSError, tomllib.TOMLDecodeError) as exc:
                 raise ConfigError(f"Cannot read configuration: {filename}") from exc
-    for key in ("client", "server", "telegram", "db"):
+    for key in ("client", "server", "telegram"):
         if key in result and not isinstance(result[key], dict):
             raise ConfigError(f"Expected a [notegram.{key}] table")
     env = {
@@ -75,8 +125,6 @@ def load_config(path=None) -> dict:
         "NOTEGRAM_HOST": ("server", "host"),
         "NOTEGRAM_PORT": ("server", "port"),
         "NOTEGRAM_DATABASE": ("server", "database"),
-        "NOTEGRAM_TLS_CERT": ("server", "tls_cert"),
-        "NOTEGRAM_TLS_KEY": ("server", "tls_key"),
         "NOTEGRAM_TELEGRAM_TOKEN": ("telegram", "token"),
     }
     for variable, keys in env.items():
@@ -85,6 +133,10 @@ def load_config(path=None) -> dict:
             for key in keys[:-1]:
                 current = current.setdefault(key, {})
             current[keys[-1]] = os.environ[variable]
+            if sources is not None:
+                sources.append(
+                    config_source("environment", variable, {".".join(keys): os.environ[variable]})
+                )
     return result
 
 

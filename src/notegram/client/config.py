@@ -4,7 +4,7 @@ import ipaddress
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
-from ..config import ConfigError, load_config, positive, shared_token
+from ..config import ConfigError, ConfigSource, config_source, load_config, positive, shared_token
 
 
 def validate_url(url: str) -> str:
@@ -43,13 +43,18 @@ class ClientConfig:
     timeout: float = 5.0
     retries: int = 3
     flush_timeout: float = 5.0
+    sources: tuple[ConfigSource, ...] = field(default=(), repr=False, compare=False)
 
     @classmethod
     def load(cls, path=None, **overrides):
-        raw = load_config(path)
+        sources = []
+        raw = load_config(path, sources=sources)
         values = raw.get("client", {}).copy()
         values.update(url=raw.get("url", "http://127.0.0.1:8765"), token=shared_token(raw))
-        values.update({k: v for k, v in overrides.items() if v is not None})
+        for key, value in overrides.items():
+            if value is not None:
+                values[key] = value
+                sources.append(config_source("argument", key, {key: value}))
         url = validate_url(values["url"])
         token = shared_token({"token": values["token"]})
         queue_size = positive(values.get("queue_size", 1000), "queue_size", int)
@@ -63,4 +68,5 @@ class ClientConfig:
             positive(values.get("timeout", 5), "timeout"),
             retries,
             positive(values.get("flush_timeout", 5), "flush_timeout"),
+            tuple(sources),
         )

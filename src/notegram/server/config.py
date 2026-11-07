@@ -13,8 +13,6 @@ class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 8765
     telegram_token: str = field(default="", repr=False)
-    tls_cert: str | None = None
-    tls_key: str | None = None
 
     @classmethod
     def load(cls, path=None):
@@ -26,9 +24,6 @@ class ServerConfig:
         port = positive(server.get("port", 8765), "port", int)
         if port > 65535:
             raise ConfigError("port must be at most 65535")
-        cert, key = server.get("tls_cert"), server.get("tls_key")
-        if bool(cert) != bool(key):
-            raise ConfigError("Set both tls_cert and tls_key")
         database = str(Path(server.get("database", "notegram.sqlite3")).expanduser())
         return cls(
             token,
@@ -36,6 +31,4 @@ class ServerConfig:
             server.get("host", "127.0.0.1"),
             port,
             raw.get("telegram", {}).get("token", ""),
-            cert,
-            key,
         )

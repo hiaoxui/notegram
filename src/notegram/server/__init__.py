@@ -1,1 +1,1 @@
-"""Server-only ingestion, storage, Telegram delivery, and migration tools."""
+"""Server-only ingestion, storage, and Telegram delivery."""
