@@ -24,8 +24,8 @@ def run(argv=None):
     parser.add_argument(
         "--days",
         type=int,
-        default=30,
-        help="Keep logs received within this many days (default: 30)",
+        default=7,
+        help="Keep logs with original timestamps within this many days (default: 7)",
     )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

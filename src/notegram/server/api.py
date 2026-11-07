@@ -10,6 +10,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from ..protocol import MAX_MESSAGE_BYTES
+from .cleanup import cleanup_loop
 from .config import ServerConfig
 from .db import EventConflict, Storage
 
@@ -154,6 +155,9 @@ def run_server(config: ServerConfig, *, with_bot=True):
         TelegramBot(config=config, storage=storage) if with_bot and config.telegram_token else None
     )
     stopped = threading.Event()
+    cleanup = threading.Thread(
+        target=cleanup_loop, args=(storage, stopped), name="notegram-cleanup", daemon=True
+    )
 
     def stop(signum, frame):
         if not stopped.is_set():
@@ -163,12 +167,15 @@ def run_server(config: ServerConfig, *, with_bot=True):
 
     old_handlers = {sig: signal.signal(sig, stop) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
+        cleanup.start()
         if bot:
             bot.start()
         logger.info("Notegram listening on %s:%s", config.host, config.port)
         server.serve_forever(poll_interval=0.2)
     finally:
+        stopped.set()
         server.server_close()
+        cleanup.join(timeout=12)
         if bot:
             bot.stop()
         for sig, handler in old_handlers.items():

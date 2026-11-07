@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS events (
     message TEXT NOT NULL, format TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS events_history ON events(domain, timestamp);
+CREATE INDEX IF NOT EXISTS events_retention ON events(timestamp);
 CREATE TABLE IF NOT EXISTS subscriptions (
     domain TEXT NOT NULL, chat_id INTEGER NOT NULL, level INTEGER NOT NULL DEFAULT 30,
     PRIMARY KEY(domain, chat_id)
@@ -246,21 +247,31 @@ class Storage:
                 "UPDATE deliveries SET status='pending',next_attempt=0 WHERE status='failed'"
             ).rowcount
 
-    def clean_logs(self, days: int = 30) -> int:
-        """Delete logs received more than ``days`` ago; return the event count.
+    def clean_logs(self, days: int = 7, *, stop_event=None) -> int:
+        """Delete logs whose original timestamps are older than ``days``.
 
         Preserve events with any pending or failed deliveries. Completed delivery
-        rows are deleted with their events; chat/logger links are retained.
+        rows are deleted with their events; chat/logger links are retained. Small
+        transactions release the write lock between batches and permit shutdown.
         """
         if type(days) is not int or days < 1:
             raise ValueError("days must be a positive integer")
-        with self.connect() as conn:
-            return conn.execute(
-                """DELETE FROM events WHERE received<? AND NOT EXISTS
-                (SELECT 1 FROM deliveries d WHERE d.event_id=events.id AND d.status!='sent')""",
-                (time.time() - days * 86400,),
-            ).rowcount
+        cutoff = time.time() - days * 86400
+        deleted = 0
+        while stop_event is None or not stop_event.is_set():
+            with self.connect() as conn:
+                count = conn.execute(
+                    """DELETE FROM events WHERE id IN (
+                    SELECT e.id FROM events e WHERE e.timestamp<? AND NOT EXISTS
+                    (SELECT 1 FROM deliveries d WHERE d.event_id=e.id AND d.status!='sent')
+                    ORDER BY e.timestamp LIMIT 1000)""",
+                    (cutoff,),
+                ).rowcount
+            deleted += count
+            if count < 1000:
+                break
+        return deleted
 
-    def prune(self, days=30):
+    def prune(self, days=7):
         """Compatibility alias for clean_logs()."""
         return self.clean_logs(days)

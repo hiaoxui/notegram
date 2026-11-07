@@ -476,7 +476,7 @@ class BotTests(IsolatedTest):
         self.storage.link_chat("app", 123)
         self.storage.post(event())
         with self.storage.connect() as conn:
-            conn.execute("UPDATE events SET received=0")
+            conn.execute("UPDATE events SET timestamp=0")
         self.assertEqual(self.storage.prune(30), 0)
         self.bot.deliver_once()
         self.assertEqual(self.storage.prune(30), 1)

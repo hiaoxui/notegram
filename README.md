@@ -313,26 +313,26 @@ After fixing a permanent failure, requeue failed deliveries:
 notegram retry-failed --config /path/to/notegram.toml
 ```
 
-Retention is explicit, with no automatic deletion:
+The running server cleans logs automatically **at startup and every hour**, keeping
+seven days of history. It uses each event's **original log timestamp**, including
+for imported history, rather than when the server received it.
+
+Logs with any pending or failed deliveries are preserved, along with chat/logger
+links. Completed delivery records are deleted with their logs. Cleanup runs in a
+background thread and commits batches of 1,000 logs to release the database write
+lock between batches. Failures are logged and retried at the next hourly run;
+shutdown interrupts cleanup between batches.
+
+You can also run cleanup manually:
 
 ```sh
-notegram clean-logs --days 30 --config /path/to/notegram.toml
+notegram clean-logs --days 7 --config /path/to/notegram.toml
 ```
 
-Cleanup removes logs received by the server more than 30 days ago (the default),
-along with their completed delivery records. Logs with any pending or failed
-deliveries are preserved. Chat/logger links are retained. The cutoff uses the
-server receipt time, so a newly received log with an old client timestamp is kept.
-The command prints the number of logs deleted and can run while the server is up.
-`prune` remains an alias for `clean-logs`.
-
-Server code can call the same method directly:
-
-```python
-from notegram.server.db import Storage
-
-deleted = Storage("notegram.sqlite3").clean_logs(days=30)
-```
+The command prints the number deleted. `prune` remains an alias. Both commands
+and `Storage("notegram.sqlite3").clean_logs()` default to seven days. A larger
+manual retention value does not change the running server's seven-day policy.
+SQLite reuses freed pages; deletion alone may not shrink the database file.
 
 Back up the SQLite database with SQLite's backup API or while the service is stopped;
 copying only the main file during WAL writes can miss committed events.
