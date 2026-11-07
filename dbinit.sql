@@ -1,40 +1,9 @@
-DROP TABLE IF EXISTS domain CASCADE;
-
-CREATE TABLE domain (
-    id      SERIAL PRIMARY KEY,
-    name    VARCHAR(100)
-);
-
-DROP TABLE IF EXISTS message;
-
-CREATE TABLE message (
-    id          BIGSERIAL PRIMARY KEY,
-    level       INT,
-    ts          BIGINT DEFAULT extract(epoch from now())::BIGINT,
-    content     TEXT,
-    domain_id   INT,
-    markdown    BOOLEAN DEFAULT FALSE,
-
-    CONSTRAINT message_domain_fk
-        FOREIGN KEY (domain_id)
-        REFERENCES domain(id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
-);
-
-
-DROP TABLE IF EXISTS tg;
-
-CREATE TABLE tg (
-    id              SERIAL PRIMARY KEY,
-    domain_id       INT,
-    cid             INT,
-    report_level    INT DEFAULT 30,
-    base_level      INT,
-
-    CONSTRAINT tg_domain_fk
-        FOREIGN KEY (domain_id)
-        REFERENCES domain(id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
-);
+-- Notegram 2 initializes its SQLite schema automatically on server startup.
+-- The schema is maintained in src/notegram/server/db.py.
+--
+-- For existing PostgreSQL installations, preserve the old database and run:
+--   pip install 'notegram[migration]'
+--   notegram import-postgres --config /path/to/notegram.toml
+--
+-- Import is read-only against PostgreSQL and does not send historical events.
+-- Do not run the destructive DROP TABLE statements from Notegram 1.

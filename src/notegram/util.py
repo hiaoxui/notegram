@@ -1,61 +1,22 @@
-from typing import List
-import os
+"""Compatibility helpers; importing Notegram never configures application logging."""
+
+import inspect
 import logging
-from copy import deepcopy
-from pathlib import Path
-from typing import Dict
-import tomllib
+from functools import wraps
 
-import asyncio
+from .config import load_config as load_config
 
-
-def async_partial(f, **kwargs):
-    async def f2(*args2, **kwargs2):
-        result = f(*args2, **kwargs, **kwargs2)
-        if asyncio.iscoroutinefunction(f):
-            result = await result
-        return result
-    return f2
+logger = logging.getLogger("notegram")
 
 
-CONFIG_PATHS: List[Path] = [
-    Path('./').resolve(),
-    Path('~/.config/').expanduser(),
-    Path('~/walless.config.d/').expanduser(),
-    Path('/etc/'),
-]
+def async_partial(function, **kwargs):
+    @wraps(function)
+    async def call(*args, **extra):
+        result = function(*args, **(kwargs | extra))
+        return await result if inspect.isawaitable(result) else result
 
-
-def load_config(path=None) -> Dict: # type: ignore
-    tries = deepcopy(CONFIG_PATHS)
-    if 'WALLESS_ROOT' in os.environ:
-        tries.insert(0, Path(os.environ['WALLESS_ROOT']) / 'walless.config.d')
-    if 'WALLESS_CONFIG' in os.environ:
-        tries.insert(0, Path(os.environ['WALLESS_CONFIG']))
-    if path is not None:
-        tries.insert(0, path)
-    for p in tries:
-        if not p.is_dir():
-            continue
-        for f in p.glob('*.toml'):
-            if 'notegram' in f.name:
-                with f.open('r') as fp:
-                    return tomllib.loads(fp.read())['notegram']
+    return call
 
 
 def get_logger():
-    _logger = logging.getLogger('notegram')
-    fmt = logging.Formatter('%(asctime)s - %(message)s')
-    stm_hdl = logging.StreamHandler()
-    stm_hdl.setFormatter(fmt)
-    _logger.addHandler(stm_hdl)
-    path = Path('~/.var/log/notegram.log').expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    f_hdl = logging.FileHandler(path)
-    f_hdl.setFormatter(fmt)
-    _logger.addHandler(f_hdl)
-    _logger.setLevel(logging.INFO)
-    return _logger
-
-
-logger = get_logger()
+    return logger

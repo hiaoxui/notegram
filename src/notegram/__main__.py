@@ -1,24 +1,11 @@
-#!/usr/bin/env python
-
-from argparse import ArgumentParser
-import logging
-
-from notegram.bot import TelegramBot
-
-logger = logging.getLogger('notifier')
+"""Compatibility entry point for python -m notegram and the notegram command."""
 
 
-def run():
-    parser = ArgumentParser()
-    parser.add_argument('command', type=str, choices=['bot'])
-    args = parser.parse_args()
-    if args.command == 'bot':
-        logger.warning('start to run bot.')
-        bot = TelegramBot()
-        bot.run()
-    else:
-        logger.error(f'unknown command: {args.command}')
+def run(argv=None):
+    from .server.cli import run as server_main
+
+    return server_main(argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

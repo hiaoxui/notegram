@@ -1,2 +1,5 @@
-from .db import Storage
-from .handler import NotegramHandler
+"""Notegram: dependency-free Python logging over HTTPS."""
+
+from .client import NotegramHandler
+
+__all__ = ["NotegramHandler"]

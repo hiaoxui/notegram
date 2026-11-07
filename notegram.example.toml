@@ -1,0 +1,23 @@
+# Copy to notegram.toml. Clients need only the first two settings.
+[notegram]
+url = "https://logs.example.com"
+token = "replace-with-a-random-shared-token"
+
+# Optional client tuning; defaults shown.
+[notegram.client]
+queue_size = 1000
+timeout = 5.0
+retries = 3
+flush_timeout = 5.0
+
+# Server settings are ignored by clients.
+[notegram.server]
+host = "127.0.0.1"
+port = 8765
+database = "notegram.sqlite3"
+# For TLS in the process instead of a reverse proxy:
+# tls_cert = "/etc/letsencrypt/live/logs.example.com/fullchain.pem"
+# tls_key = "/etc/letsencrypt/live/logs.example.com/privkey.pem"
+
+[notegram.telegram]
+token = "replace-with-your-botfather-token"

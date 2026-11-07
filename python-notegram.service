@@ -1,17 +1,22 @@
 [Unit]
-Description=notegram bot
-Requires=network.target
+Description=Notegram ingestion and Telegram delivery
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=60
 
 [Service]
-WorkingDirectory=/home/hiaoxui
-ExecStart=/home/hiaoxui/.local/share/anaconda3/envs/notegram/bin/python3 -m notegram bot
+Type=simple
 User=hiaoxui
-
+WorkingDirectory=/home/hiaoxui
+ExecStart=/home/hiaoxui/dev/notegram/.venv/bin/python -m notegram server --config /home/hiaoxui/dev/notegram/notegram.toml
+Environment=PYTHONUNBUFFERED=1
 Restart=on-failure
-RestartSec=60
-StartLimitInterval=3600
-StartLimitBurst=60
+RestartSec=10
+TimeoutStopSec=40
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
-

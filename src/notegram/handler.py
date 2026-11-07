@@ -1,37 +1,5 @@
-from logging import Handler, LogRecord, warning, getLogger
-import re
-from threading import Thread
+"""Compatibility import for existing logging configurations."""
 
-from notegram.db import Storage
-from notegram.util import load_config
+from .client.handler import NotegramHandler
 
-logger = getLogger('notegram')
-
-
-class NotegramHandler(Handler):
-    def __init__(self, cfg_path=None):
-        super().__init__()
-        config = load_config(cfg_path)
-        self.db: Storage = None # type: ignore
-        if config is not None:
-            self.db = Storage(**config['db'])
-        else:
-            warning('DB config not found. Notegram disabled.')
-
-    def emit(self, record: LogRecord) -> None:
-        def post_message():
-            msg = record.getMessage()
-            if msg.startswith('MARKDOWN'):
-                msg = re.sub(r'^MARKDOWN\s*', '', msg)
-                markdown = True
-            else:
-                markdown = False
-
-            try:
-                self.db.post(level=record.levelno, domain=record.name, message=msg, markdown=markdown)
-            except Exception as e:
-                logger.error('Exception for handler. msg=' + str(e))
-
-        if self.db is not None:
-            t = Thread(target=post_message, args=())
-            t.start()
+__all__ = ["NotegramHandler"]
