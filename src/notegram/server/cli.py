@@ -15,14 +15,17 @@ def run(argv=None):
         "command",
         nargs="?",
         default="server",
-        choices=["server", "bot", "retry-failed", "prune"],
+        choices=["server", "bot", "retry-failed", "clean-logs", "prune"],
     )
     parser.add_argument("--config", help="TOML file or configuration directory")
     parser.add_argument(
         "--api-only", action="store_true", help="Run ingestion without the Telegram bot"
     )
     parser.add_argument(
-        "--days", type=int, default=30, help="Retention age for prune (default: 30)"
+        "--days",
+        type=int,
+        default=30,
+        help="Keep logs received within this many days (default: 30)",
     )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -39,10 +42,10 @@ def run(argv=None):
             storage = Storage(config.database)
             if args.command == "retry-failed":
                 print(f"Requeued {storage.retry_failed()} failed deliveries.")
-            elif args.command == "prune":
+            elif args.command in {"clean-logs", "prune"}:
                 if args.days < 1:
                     parser.error("--days must be at least 1")
-                print(f"Deleted {storage.prune(args.days)} old events.")
+                print(f"Deleted {storage.clean_logs(args.days)} old logs.")
     except ConfigError as exc:
         parser.error(str(exc))
     except Exception:

@@ -11,7 +11,7 @@ from urllib.error import URLError
 
 from test_notegram import ROOT, IsolatedTest
 
-spec = importlib.util.spec_from_file_location("manual_smoke", ROOT / "test_notifier.py")
+spec = importlib.util.spec_from_file_location("manual_smoke", ROOT / "test_notegram.py")
 smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 

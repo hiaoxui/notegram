@@ -316,10 +316,24 @@ notegram retry-failed --config /path/to/notegram.toml
 Retention is explicit, with no automatic deletion:
 
 ```sh
-notegram prune --days 30 --config /path/to/notegram.toml
+notegram clean-logs --days 30 --config /path/to/notegram.toml
 ```
 
-Pruning removes old events only if they have no pending or failed deliveries.
+Cleanup removes logs received by the server more than 30 days ago (the default),
+along with their completed delivery records. Logs with any pending or failed
+deliveries are preserved. Chat/logger links are retained. The cutoff uses the
+server receipt time, so a newly received log with an old client timestamp is kept.
+The command prints the number of logs deleted and can run while the server is up.
+`prune` remains an alias for `clean-logs`.
+
+Server code can call the same method directly:
+
+```python
+from notegram.server.db import Storage
+
+deleted = Storage("notegram.sqlite3").clean_logs(days=30)
+```
+
 Back up the SQLite database with SQLite's backup API or while the service is stopped;
 copying only the main file during WAL writes can miss committed events.
 
@@ -365,7 +379,7 @@ PostgreSQL/Telegram services. They cover auth, duplicate/conflicting events, log
 tracebacks, queue overflow, retries, durable delivery, chunk restart recovery,
 Telegram rate limits, command authorization, and persisted polling offsets.
 
-`test_notifier.py` is a manual smoke check that sends a real notification only when
+`test_notegram.py` is a manual smoke check that sends a real notification only when
 run explicitly. It is not run as part of the automated test suite.
 
 ### Troubleshoot a remote client
@@ -385,8 +399,8 @@ settings it also contains; environment variables take precedence over both.
 You can explicitly select a config or override the endpoint for the smoke check:
 
 ```sh
-python test_notifier.py --config ~/.config/notegram.toml
-NOTEGRAM_URL=https://logs.example.com python test_notifier.py
+python test_notegram.py --config ~/.config/notegram.toml
+NOTEGRAM_URL=https://logs.example.com python test_notegram.py
 ```
 
 The smoke check prints each loaded configuration file with its absolute path,

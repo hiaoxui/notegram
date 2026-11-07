@@ -246,10 +246,21 @@ class Storage:
                 "UPDATE deliveries SET status='pending',next_attempt=0 WHERE status='failed'"
             ).rowcount
 
-    def prune(self, days):
+    def clean_logs(self, days: int = 30) -> int:
+        """Delete logs received more than ``days`` ago; return the event count.
+
+        Preserve events with any pending or failed deliveries. Completed delivery
+        rows are deleted with their events; chat/logger links are retained.
+        """
+        if type(days) is not int or days < 1:
+            raise ValueError("days must be a positive integer")
         with self.connect() as conn:
             return conn.execute(
                 """DELETE FROM events WHERE received<? AND NOT EXISTS
                 (SELECT 1 FROM deliveries d WHERE d.event_id=events.id AND d.status!='sent')""",
                 (time.time() - days * 86400,),
             ).rowcount
+
+    def prune(self, days=30):
+        """Compatibility alias for clean_logs()."""
+        return self.clean_logs(days)
