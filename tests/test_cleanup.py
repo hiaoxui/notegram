@@ -133,3 +133,34 @@ class CleanupTests(IsolatedTest):
             with redirect_stdout(out), patch("notegram.server.cli.logging.basicConfig"):
                 run([command, "--days", "7", "--config", str(config)])
             self.assertIn("Deleted 1 old logs.", out.getvalue())
+
+    def test_clean_pending_cli_discards_due_delayed_and_partially_sent_deliveries(self):
+        config = self.config_file(
+            self.root / "notegram.toml",
+            '[notegram]\ntoken="test-shared"\n[notegram.server]\ndatabase="logs.sqlite3"\n',
+        )
+        self.db.link_chat("app", 123)
+        for name in ("due", "delayed", "partial", "sent", "failed"):
+            data = event(eid=name)
+            if name == "partial":
+                data["message"] = "x" * 4000
+            self.db.post(data)
+        self.db.retry("delayed", 123, delay=3600, error="Telegram 429")
+        self.db.checkpoint("partial", 123, 1)
+        self.db.delivered("sent", 123)
+        self.db.retry("failed", 123, delay=0, error="Telegram 403", permanent=True)
+
+        for count in (3, 0):
+            out = io.StringIO()
+            with redirect_stdout(out), patch("notegram.server.cli.logging.basicConfig"):
+                run(["clean-pending", "--config", str(config)])
+            self.assertEqual(out.getvalue(), f"Discarded {count} pending deliveries.\n")
+
+        self.assertIsNone(self.db.next_delivery())
+        with self.db.connect() as conn:
+            self.assertEqual(
+                dict(conn.execute("SELECT event_id,status FROM deliveries")),
+                {"sent": "sent", "failed": "failed"},
+            )
+            self.assertEqual(conn.execute("SELECT count(*) FROM events").fetchone()[0], 5)
+        self.assertEqual(self.db.subscriptions(123), [{"domain": "app", "level": 30}])

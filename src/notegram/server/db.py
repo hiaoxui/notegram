@@ -247,6 +247,11 @@ class Storage:
                 "UPDATE deliveries SET status='pending',next_attempt=0 WHERE status='failed'"
             ).rowcount
 
+    def clean_pending(self) -> int:
+        """Discard queued deliveries after the delivery worker has stopped."""
+        with self.connect() as conn:
+            return conn.execute("DELETE FROM deliveries WHERE status='pending'").rowcount
+
     def clean_logs(self, days: int = 7, *, stop_event=None) -> int:
         """Delete logs whose original timestamps are older than ``days``.
 

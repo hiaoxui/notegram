@@ -313,6 +313,20 @@ After fixing a permanent failure, requeue failed deliveries:
 notegram retry-failed --config /path/to/notegram.toml
 ```
 
+To discard all pending Telegram deliveries, stop the service first so the worker
+cannot send the backlog during cleanup. Run `clean-pending` as the service user
+from the service's working directory if the database path is relative.
+
+```sh
+sudo systemctl stop python-notegram.service &&
+  notegram clean-pending --config /path/to/notegram.toml &&
+  sudo systemctl start python-notegram.service
+```
+
+The command reports the number of discarded deliveries, including delayed retries
+and partially delivered messages. Previously sent chunks stay in Telegram, and
+saved logs are still available through `/pull`.
+
 The running server cleans logs automatically **at startup and every hour**, keeping
 seven days of history. It uses each event's **original log timestamp**, including
 for imported history, rather than when the server received it.

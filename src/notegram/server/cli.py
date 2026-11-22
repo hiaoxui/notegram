@@ -15,7 +15,8 @@ def run(argv=None):
         "command",
         nargs="?",
         default="server",
-        choices=["server", "bot", "retry-failed", "clean-logs", "prune"],
+        choices=["server", "bot", "retry-failed", "clean-pending", "clean-logs", "prune"],
+        help="Stop the delivery worker before running clean-pending.",
     )
     parser.add_argument("--config", help="TOML file or configuration directory")
     parser.add_argument(
@@ -42,6 +43,8 @@ def run(argv=None):
             storage = Storage(config.database)
             if args.command == "retry-failed":
                 print(f"Requeued {storage.retry_failed()} failed deliveries.")
+            elif args.command == "clean-pending":
+                print(f"Discarded {storage.clean_pending()} pending deliveries.")
             elif args.command in {"clean-logs", "prune"}:
                 if args.days < 1:
                     parser.error("--days must be at least 1")
